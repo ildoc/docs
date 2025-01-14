@@ -25,9 +25,9 @@ jobs:
       - name: Log in to Gitea Package registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ secrets.GITEA_REGISTRY }}
+          registry: ${{ DOCKER_REGISTRY }}
           username: ${{ gitea.actor }}
-          password: ${{ secrets.GITEA_TOKEN }}
+          password: ${{ secrets.USER_TOKEN }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -39,4 +39,4 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: ${{ gitea.actor }}/docs:latest;${{ secrets.GITEA_USERNAME }}/docs:{{ gitea.sha }}
+          tags: ${{ gitea.actor }}/docs:latest;${{ gitea.actor }}/docs:{{ gitea.sha }}
