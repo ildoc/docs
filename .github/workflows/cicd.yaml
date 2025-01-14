@@ -56,9 +56,6 @@ jobs:
           sed -i "s#${{ secrets.GITEA_URL }}/${{ gitea.actor }}/docs:[^:]*#${{ secrets.GITEA_URL }}/${{ gitea.actor }}/docs:${{ gitea.sha }}#" "$FILE"
           cat "$FILE"
 
-      - name: Status
-        run: |
-          git status
       - name: Commit
         run: |
           cd homelab
