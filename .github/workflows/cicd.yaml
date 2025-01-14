@@ -52,7 +52,7 @@ jobs:
       - name: Replace SHA in deployment.yaml
         run: |
           FILE="kubernetes/applications/docs/deployment.yaml"
-          sed -i "s|image: ${{ secrets.GITEA_URL }}/${{ gitea.actor }}/docs:[a-f0-9]\{40\}|image: ${{ secrets.GITEA_URL }}/${{ gitea.actor }}/docs:${{ gitea.sha }}|g" "$FILE"
+          sed -i -v "s# ${{ secrets.GITEA_URL }}/${{ gitea.actor }}/docs:[^:]*#${{ secrets.GITEA_URL }}/${{ gitea.actor }}/docs:${{ gitea.sha }}#" "$FILE"
           cat "$FILE"
 
       - name: Status
