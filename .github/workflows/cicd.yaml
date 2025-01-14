@@ -41,6 +41,7 @@ jobs:
           repository: ${{ gitea.actor }}/homelab
           ref: master
           path: homelab
+          token: ${{ secrets.ACTIONS_PAT }}
 
       - name: Replace SHA in deployment.yaml
         run: |
@@ -51,8 +52,8 @@ jobs:
       - name: Commit and push
         run: |
           cd homelab
-          git config --global user.name "ildoc"
-          git config --global user.email "il_doc@protonmail.com"
+          git config --global user.name "[BOT] Gitea Actions"
+          git config --global user.email "actions@${{ vars.DOCKER_REGISTRY }}"
           git add kubernetes/applications/docs/deployment.yaml
           git commit -m "Update docs image SHA to ${{ github.sha }}"
           git push origin master
