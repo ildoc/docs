@@ -6,17 +6,8 @@ on:
 permissions:
   contents: write
 jobs:
-  check-env:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check IS_GITEA variable
-        run: |
-          if [ "${{ vars.IS_GITEA }}" == "true" ]; then
-            echo "This is not GitHub. Skipping action."
-            exit 0
-          fi
-
   deploy:
+    if: ${{ ! vars.IS_GITEA }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

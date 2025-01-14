@@ -14,17 +14,17 @@ jobs:
           echo ${{ vars.DOCKER_REGISTRY }}
           echo ${{ gitea.actor }}
           echo ${{ gitea.sha }}
-          echo ${{ secrets.ACTIONS_PAT }}
   
-      - name: Check IS_GITEA variable
-        run: |
-          if [ "${{ vars.GITEA_ENV }}" != "true" ]; then
-            echo "This is not Gitea. Skipping action."
-            exit 0
-          fi
-          echo "Running on Gitea. Proceeding with action."
+      # - name: Check IS_GITEA variable
+      #   run: |
+      #     if [ "${{ vars.GITEA_ENV }}" != "true" ]; then
+      #       echo "This is not Gitea. Skipping action."
+      #       exit 0
+      #     fi
+      #     echo "Running on Gitea. Proceeding with action."
 
   build-docker-image:
+    if: ${{ vars.IS_GITEA }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -47,4 +47,6 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: ${{ gitea.actor }}/docs:latest, ${{ gitea.actor }}/docs:${{ gitea.sha }}
+          tags: |
+            ${{ vars.DOCKER_REGISTRY }}/${{ gitea.actor }}/docs:latest
+            ${{ vars.DOCKER_REGISTRY }}/${{ gitea.actor }}/docs:${{ gitea.sha }}
