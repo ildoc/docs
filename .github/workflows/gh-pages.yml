@@ -11,11 +11,10 @@ jobs:
     steps:
       - name: Check IS_GITEA variable
         run: |
-          if [ "${{ vars.IS_GITEA }}" != "true" ]; then
-            echo "This is not Gitea. Skipping action."
+          if [ "${{ vars.IS_GITEA }}" == "true" ]; then
+            echo "This is not GitHub. Skipping action."
             exit 0
           fi
-          echo "Running on Gitea. Proceeding with action."
 
   deploy:
     runs-on: ubuntu-latest
