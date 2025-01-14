@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: dump vars
         run: |
-          echo ${{ vars.GITEA_ENV }}
+          echo ${{ vars.IS_GITEA }}
           echo ${{ vars.DOCKER_REGISTRY }}
           echo ${{ gitea.actor }}
           echo ${{ gitea.sha }}
@@ -46,4 +46,4 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: ${{ gitea.actor }}/docs:latest;${{ gitea.actor }}/docs:{{ gitea.sha }}
+          tags: ${{ gitea.actor }}/docs:latest, ${{ gitea.actor }}/docs:{{ gitea.sha }}
