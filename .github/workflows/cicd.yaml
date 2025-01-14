@@ -51,6 +51,8 @@ jobs:
       - name: Commit and push
         run: |
           cd homelab
+          git config --global user.name "ildoc"
+          git config --global user.email "il_doc@protonmail.com"
           git add kubernetes/applications/docs/deployment.yaml
           git commit -m "Update docs image SHA to ${{ github.sha }}"
           git push origin master
