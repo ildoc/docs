@@ -38,7 +38,8 @@ jobs:
       - name: Checkout homelab repo
         uses: actions/checkout@v4
         with: 
-          repository: http://${{ vars.DOCKER_REGISTRY }}/${{ gitea.actor }}/homelab
+          repository: ${{ gitea.actor }}/homelab
+          ref: master
 
       - name: Replace SHA in deployment.yaml
         run: |
