@@ -51,7 +51,7 @@ jobs:
       - name: Commit and push
         run: |
           cd homelab
-          git remote set-url origin https://x-access-token:${{ secrets.ACTIONS_PAT }}@${{ vars.DOCKER_REGISTRY }}/${{ gitea.actor }}/homelab.git
+          git remote set-url origin https://${{ gitea.actor }}:${{ secrets.ACTIONS_PAT }}@${{ vars.DOCKER_REGISTRY }}/${{ gitea.actor }}/homelab.git
           git config --global user.name "Gitea Actions Bot"
           git config --global user.email "actions@${{ vars.DOCKER_REGISTRY }}"
           git add kubernetes/applications/docs/deployment.yaml
