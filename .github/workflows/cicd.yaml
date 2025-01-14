@@ -30,6 +30,6 @@ jobs:
         with:
           push: true
           tags: |
-            ${{ vars.DOCKER_REGISTRY }}/${{ gitea.actor }}/docs:latest
+            ${{ gitea.actor }}/docs:latest
           secrets: |
             GIT_AUTH_TOKEN=${{ secrets.ACTIONS_PAT }}
