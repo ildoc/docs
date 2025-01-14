@@ -58,5 +58,5 @@ jobs:
           git config --global user.email "actions@${{ vars.DOCKER_REGISTRY }}"
           git add kubernetes/applications/docs/deployment.yaml
           git commit -m "Update image SHA to ${{ github.sha }}"
-          git push
+          git push -v
 
