@@ -47,11 +47,12 @@ jobs:
         uses: actions/checkout@v4
         with: 
           repository: ${{ gitea.actor }}/homelab
-          ref: HEAD
+          ref: master
+          path: homelab
 
       - name: Replace SHA in deployment.yaml
         run: |
-          FILE="kubernetes/applications/docs/deployment.yaml"
+          FILE="homelab/kubernetes/applications/docs/deployment.yaml"
           sed -i "s#${{ secrets.GITEA_URL }}/${{ gitea.actor }}/docs:[^:]*#${{ secrets.GITEA_URL }}/${{ gitea.actor }}/docs:${{ gitea.sha }}#" "$FILE"
           cat "$FILE"
 
@@ -60,6 +61,7 @@ jobs:
           git status
       - name: Commit
         run: |
+          cd homelab
           git config --global user.name "Gitea Actions Bot"
           git config --global user.email "actions@${{ vars.DOCKER_REGISTRY }}"
           git add kubernetes/applications/docs/deployment.yaml
