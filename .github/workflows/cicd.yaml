@@ -63,11 +63,5 @@ jobs:
           git config --global user.email "actions@${{ vars.DOCKER_REGISTRY }}"
           git add kubernetes/applications/docs/deployment.yaml
           git commit -m "Update image SHA to ${{ github.sha }}"
-          git push
+          git push https://${{ gitea.actor }}:${{ secrets.ACTIONS_PAT }}@${{ vars.DOCKER_REGISTRY }}/${{ gitea.actor }}/homelab.git main
 
-      # - name: Push changes
-      #   uses: ad-m/github-push-action@master
-      #   with:
-      #     github_token: ${{ secrets.ACTIONS_PAT }}
-      #     branch: HEAD
-      #     directory: homelab
