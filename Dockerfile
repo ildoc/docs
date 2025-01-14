@@ -1,5 +1,5 @@
 # Utilizziamo l'immagine di squidfunk/mkdocs-material per generare le pagine
-FROM squidfunk/mkdocs-material:latest as builder
+FROM squidfunk/mkdocs-material:latest AS builder
 
 # Copiamo il codice sorgente del sito
 COPY . /docs

@@ -30,4 +30,7 @@ jobs:
         with:
           push: true
           tags: |
-            ${{ gitea.actor }}/docs:latest
+            ${{ gitea.actor }}/docs:latest,
+            ${{ gitea.actor }}/docs:${{ gitea.sha }}
+          secrets: |
+            GIT_AUTH_TOKEN=${{ secrets.ACTIONS_PAT }}
