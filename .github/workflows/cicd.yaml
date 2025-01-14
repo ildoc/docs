@@ -14,6 +14,7 @@ jobs:
           echo ${{ vars.DOCKER_REGISTRY }}
           echo ${{ gitea.actor }}
           echo ${{ gitea.sha }}
+          echo ${{ secrets.ACTIONS_PAT }}
   
       - name: Check IS_GITEA variable
         run: |
@@ -34,7 +35,7 @@ jobs:
         with:
           registry: ${{ vars.DOCKER_REGISTRY }}
           username: ${{ gitea.actor }}
-          password: ${{ secrets.USER_TOKEN }}
+          password: ${{ secrets.ACTIONS_PAT }}
 
       # - name: Set up QEMU
       #   uses: docker/setup-qemu-action@v3
