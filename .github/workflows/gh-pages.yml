@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Check IS_GITEA variable
         run: |
-          if [ ${{ vars.GITEA_ENV }} != "true" ]; then
+          if [ "${{ vars.GITEA_ENV }}" != "true" ]; then
             echo "This is not Gitea. Skipping action."
             exit 0
           fi

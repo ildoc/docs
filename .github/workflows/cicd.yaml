@@ -13,16 +13,17 @@ jobs:
           echo ${{ vars.GITEA_ENV }}
           echo ${{ vars.DOCKER_REGISTRY }}
           echo ${{ gitea.actor }}
+          echo ${{ gitea.sha }}
   
-      - name: Check GITEA_ENV variable
+      - name: Check IS_GITEA variable
         run: |
-          if [ ${{ vars.GITEA_ENV }} != "true" ]; then
+          if [ "${{ vars.GITEA_ENV }}" != "true" ]; then
             echo "This is not Gitea. Skipping action."
             exit 0
           fi
           echo "Running on Gitea. Proceeding with action."
 
-  build-docker:
+  build-docker-image:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -35,8 +36,8 @@ jobs:
           username: ${{ gitea.actor }}
           password: ${{ secrets.USER_TOKEN }}
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      # - name: Set up QEMU
+      #   uses: docker/setup-qemu-action@v3
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
