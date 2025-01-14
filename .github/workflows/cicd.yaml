@@ -5,24 +5,6 @@ on:
       - master
 
 jobs:
-  check-env:
-    runs-on: ubuntu-latest
-    steps:
-      - name: dump vars
-        run: |
-          echo ${{ vars.IS_GITEA }}
-          echo ${{ vars.DOCKER_REGISTRY }}
-          echo ${{ gitea.actor }}
-          echo ${{ gitea.sha }}
-  
-      # - name: Check IS_GITEA variable
-      #   run: |
-      #     if [ "${{ vars.GITEA_ENV }}" != "true" ]; then
-      #       echo "This is not Gitea. Skipping action."
-      #       exit 0
-      #     fi
-      #     echo "Running on Gitea. Proceeding with action."
-
   build-docker-image:
     if: ${{ vars.IS_GITEA }}
     runs-on: ubuntu-latest
@@ -48,5 +30,4 @@ jobs:
         with:
           push: true
           tags: |
-            ${{ vars.DOCKER_REGISTRY }}/${{ gitea.actor }}/docs:latest,
-            ${{ vars.DOCKER_REGISTRY }}/${{ gitea.actor }}/docs:${{ gitea.sha }}
+            ${{ gitea.actor }}/docs:latest
