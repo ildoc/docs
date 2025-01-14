@@ -56,17 +56,18 @@ jobs:
           sed -i "s#${{ secrets.GITEA_URL }}/${{ gitea.actor }}/docs:[^:]*#${{ secrets.GITEA_URL }}/${{ gitea.actor }}/docs:${{ gitea.sha }}#" "$FILE"
           cat "$FILE"
 
-      - name: Commit
+      - name: Commit and push
         run: |
           cd homelab
           git config --global user.name "Gitea Actions Bot"
           git config --global user.email "actions@${{ vars.DOCKER_REGISTRY }}"
           git add kubernetes/applications/docs/deployment.yaml
           git commit -m "Update image SHA to ${{ github.sha }}"
+          git push
 
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.ACTIONS_PAT }}
-          branch: HEAD
-          directory: homelab
+      # - name: Push changes
+      #   uses: ad-m/github-push-action@master
+      #   with:
+      #     github_token: ${{ secrets.ACTIONS_PAT }}
+      #     branch: HEAD
+      #     directory: homelab
