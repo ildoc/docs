@@ -8,6 +8,12 @@ jobs:
   check-env:
     runs-on: ubuntu-latest
     steps:
+      - name: dump vars
+        run: |
+          echo GITEA_ENV = "$GITEA_ENV"
+          echo DOCKER_REGISTRY = "$DOCKER_REGISTRY"
+          echo ${{ gitea.actor }}
+  
       - name: Check GITEA_ENV variable
         run: |
           if [ "$GITEA_ENV" != "true" ]; then
@@ -15,7 +21,7 @@ jobs:
             exit 0
           fi
           echo "Running on Gitea. Proceeding with action."
-  
+
   build-docker:
     runs-on: ubuntu-latest
     steps:
