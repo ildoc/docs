@@ -9,10 +9,6 @@ jobs:
     if: ${{ vars.IS_GITEA }}
     runs-on: ubuntu-latest
     steps:
-      - name: Test
-        run: |
-          echo ${{  gitea.sha }}
-
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -39,10 +35,6 @@ jobs:
     needs: build-docker-image
     runs-on: ubuntu-latest
     steps:
-      - name: Test
-        run: |
-          echo ${{  gitea.sha }}
-
       - name: Checkout homelab repo
         uses: actions/checkout@v4
         with: 
@@ -63,5 +55,5 @@ jobs:
           git config --global user.email "actions@${{ vars.DOCKER_REGISTRY }}"
           git add kubernetes/applications/docs/deployment.yaml
           git commit -m "Update image SHA to ${{ github.sha }}"
-          git push https://${{ gitea.actor }}:${{ secrets.ACTIONS_PAT }}@${{ vars.DOCKER_REGISTRY }}/${{ gitea.actor }}/homelab.git main
+          git push https://${{ gitea.actor }}:${{ secrets.ACTIONS_PAT }}@${{ vars.DOCKER_REGISTRY }}/${{ gitea.actor }}/homelab.git master
 
