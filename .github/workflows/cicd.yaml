@@ -10,13 +10,13 @@ jobs:
     steps:
       - name: dump vars
         run: |
-          echo ${{ env.GITEA_ENV }}
-          echo ${{ env.DOCKER_REGISTRY }}
+          echo ${{ vars.GITEA_ENV }}
+          echo ${{ vars.DOCKER_REGISTRY }}
           echo ${{ gitea.actor }}
   
       - name: Check GITEA_ENV variable
         run: |
-          if [ "$GITEA_ENV" != "true" ]; then
+          if [ ${{ vars.GITEA_ENV }} != "true" ]; then
             echo "This is not Gitea. Skipping action."
             exit 0
           fi
@@ -31,7 +31,7 @@ jobs:
       - name: Log in to Gitea Package registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.DOCKER_REGISTRY }}
+          registry: ${{ vars.DOCKER_REGISTRY }}
           username: ${{ gitea.actor }}
           password: ${{ secrets.USER_TOKEN }}
 
