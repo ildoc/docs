@@ -1,0 +1,41 @@
+site_name: ildoc's
+site_url: !ENV [SITE_URL, http://localhost:8010]
+
+nav:
+  - Home: index.md
+  - Blog:
+    - blog/index.md
+
+# Repository
+repo_name: !ENV [REPO_NAME, ildoc/docs]
+repo_url: !ENV REPO_URL
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: black
+    accent: blue
+  font:
+    text: Ubuntu
+    code: Ubuntu Mono
+  favicon: assets/favicon.png
+  logo: assets/favicon.png
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.footer
+    - navigation.instant
+
+# Plugins
+plugins:
+  - blog
+  - search:
+      separator: '[\s\u200b\-_,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - minify:
+      minify_html: true
+
+extra:
+  generator: false
+
+copyright: Copyright &copy; 2025 ildoc

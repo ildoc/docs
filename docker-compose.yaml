@@ -1,0 +1,9 @@
+services:
+  mkdocs:
+    image: squidfunk/mkdocs-material:latest
+    environment:
+      - REPO_URL=https://gitea.local.ildoc.it/ildoc/docs
+    volumes:
+      - .:/docs
+    ports:
+      - "8000:8000"    
