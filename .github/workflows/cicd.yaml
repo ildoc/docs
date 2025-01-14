@@ -47,7 +47,7 @@ jobs:
         uses: actions/checkout@v4
         with: 
           repository: ${{ gitea.actor }}/homelab
-          ref: master
+          ref: HEAD
 
       - name: Replace SHA in deployment.yaml
         run: |
@@ -69,4 +69,4 @@ jobs:
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.ACTIONS_PAT }}
-          branch: master
+          branch: HEAD
