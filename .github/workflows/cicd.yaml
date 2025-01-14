@@ -48,5 +48,5 @@ jobs:
         with:
           push: true
           tags: |
-            ${{ vars.DOCKER_REGISTRY }}/${{ gitea.actor }}/docs:latest
+            ${{ vars.DOCKER_REGISTRY }}/${{ gitea.actor }}/docs:latest,
             ${{ vars.DOCKER_REGISTRY }}/${{ gitea.actor }}/docs:${{ gitea.sha }}
