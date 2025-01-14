@@ -48,7 +48,6 @@ jobs:
           cat "$FILE"
       - name: Commit and push changes
         run: |
-          cd homelab
           git config --global user.name "Gitea Actions Bot"
           git config --global user.email "actions@${{ vars.DOCKER_REGISTRY }}"
           git add kubernetes/applications/docs/deployment.yaml
