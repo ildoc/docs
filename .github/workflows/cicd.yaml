@@ -27,8 +27,8 @@ jobs:
         with:
           push: true
           build-args: |
-            SITE_URL: ${{ vars.SITE_URL }}
-            REPO_URL: ${{ vars.REPO_URL }}
+            SITE_URL=${{ vars.SITE_URL }}
+            REPO_URL=${{ vars.REPO_URL }}
           tags: |
             ${{ vars.DOCKER_REGISTRY }}/${{ github.actor }}/docs:latest
             ${{ vars.DOCKER_REGISTRY }}/${{ github.actor }}/docs:${{ github.sha }}
