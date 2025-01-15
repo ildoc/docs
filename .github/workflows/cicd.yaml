@@ -16,7 +16,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ${{ vars.DOCKER_REGISTRY }}
-          username: ${{ gitea.actor }}
+          username: ${{ github.actor }}
           password: ${{ secrets.ACTIONS_PAT }}
       
       - name: Set up Docker Buildx
@@ -27,8 +27,8 @@ jobs:
         with:
           push: true
           tags: |
-            ${{ vars.DOCKER_REGISTRY }}/${{ gitea.actor }}/docs:latest
-            ${{ vars.DOCKER_REGISTRY }}/${{ gitea.actor }}/docs:${{ gitea.sha }}
+            ${{ vars.DOCKER_REGISTRY }}/${{ github.actor }}/docs:latest
+            ${{ vars.DOCKER_REGISTRY }}/${{ github.actor }}/docs:${{ github.sha }}
     
   update-devops-repo:
     if: ${{ vars.IS_GITEA }}
@@ -38,7 +38,7 @@ jobs:
       - name: Checkout homelab repo
         uses: actions/checkout@v4
         with: 
-          repository: ${{ gitea.actor }}/homelab
+          repository: ${{ github.actor }}/homelab
           ref: master
           path: homelab
           token: ${{ secrets.ACTIONS_PAT }}
@@ -46,7 +46,7 @@ jobs:
       - name: Replace SHA in deployment.yaml
         run: |
           FILE="homelab/kubernetes/applications/docs/deployment.yaml"
-          sed -i "s#${{ secrets.GITEA_URL }}/${{ gitea.actor }}/docs:[^:]*#${{ secrets.GITEA_URL }}/${{ gitea.actor }}/docs:${{ gitea.sha }}#" "$FILE"
+          sed -i "s#${{ secrets.GITEA_URL }}/${{ github.actor }}/docs:[^:]*#${{ secrets.GITEA_URL }}/${{ github.actor }}/docs:${{ github.sha }}#" "$FILE"
           cat "$FILE"
 
       - name: Commit and push
