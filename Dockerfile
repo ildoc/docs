@@ -4,6 +4,9 @@ FROM squidfunk/mkdocs-material:latest AS builder
 # Copiamo il codice sorgente del sito
 COPY . /docs
 
+ENV SITE_URL /
+ENV REPO_URL /
+
 # Generiamo le pagine HTML
 RUN mkdocs build --site-dir /app/site
 
