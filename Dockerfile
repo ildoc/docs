@@ -6,8 +6,8 @@ COPY . /docs
 
 ARG SITE_URL
 ARG REPO_URL
-ENV SITE_URL=${SITE_URL}}
-ENV REPO_URL=${REPO_URL}}
+ENV SITE_URL=${SITE_URL}
+ENV REPO_URL=${REPO_URL}
 
 # Generiamo le pagine HTML
 RUN mkdocs build --site-dir /app/site
