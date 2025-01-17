@@ -22,7 +22,7 @@ theme:
   favicon: assets/favicon.png
   logo: assets/favicon.png
   icon:
-    repo: fontawesome/brands/github
+    repo: !ENV [REPO_ICON, fontawesome/brands/github]
   features:
     - navigation.footer
     - navigation.instant
