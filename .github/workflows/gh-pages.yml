@@ -32,10 +32,6 @@ jobs:
               mkdocs-minify-plugin \
               mkdocs-redirects \
               mkdocs-rss-plugin
-      - name: Dump vars
-        run: |
-          echo ${{ vars.SITE_URL }}
-          echo ${{ vars.REPO_URL }}
       - name: Build and push
         env:
           SITE_URL: ${{ vars.SITE_URL }}
