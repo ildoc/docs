@@ -31,8 +31,12 @@ jobs:
               mkdocs-minify-plugin \
               mkdocs-redirects \
               mkdocs-rss-plugin
+      - name: Dump vars
+        run: |
+          echo ${{ vars.SITE_URL }}
+          echo ${{ vars.REPO_URL }}
       - name: Build and push
-        run: mkdocs gh-deploy --force
         env:
           SITE_URL: ${{ vars.SITE_URL }}
           REPO_URL: ${{ vars.REPO_URL }}
+        run: mkdocs gh-deploy --force
