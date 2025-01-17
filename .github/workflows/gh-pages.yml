@@ -9,6 +9,7 @@ permissions:
 jobs:
   deploy:
     if: ${{ ! vars.IS_GITEA }}
+    environment: github-pages
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
