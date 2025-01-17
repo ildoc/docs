@@ -3,7 +3,7 @@ date: 2022-09-12
 authors: [ildoc]
 description: >
     prova descrizione
-categories:
+tags:
   - Blog
 ---
 Prova blog

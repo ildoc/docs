@@ -5,14 +5,12 @@ COPY . /docs
 ARG SITE_URL
 ARG REPO_URL
 ARG REPO_ICON
-# ENV SITE_URL=${SITE_URL}
-# ENV REPO_URL=${REPO_URL}
-# ENV REPO_ICON=${REPO_ICON}
 
-# ENV SITE_URL=
-# ENV REPO_URL=
-# ENV REPO_ICON=
-
+RUN \
+    pip install mkdocs-rss-plugin \
+&& \
+    pip install mkdocs-glightbox
+    
 RUN mkdocs build --site-dir /app/site
 
 FROM nginx:latest

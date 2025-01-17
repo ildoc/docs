@@ -8,10 +8,6 @@ jobs:
   build-docker-image:
     if: ${{ vars.IS_GITEA }}
     runs-on: ubuntu-latest
-    # env:
-    #   SITE_URL: ${{ vars.SITE_URL }}
-    #   REPO_URL: ${{ vars.REPO_URL }}
-    #   REPO_ICON: ${{ vars.REPO_ICON }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
