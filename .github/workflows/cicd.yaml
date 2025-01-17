@@ -24,11 +24,16 @@ jobs:
       
       - name: Build and push
         uses: docker/build-push-action@v6
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          REPO_URL: ${{ vars.REPO_URL }}
+          REPO_ICON: ${{ vars.REPO_ICON }}
         with:
           push: true
-          build-args: |
-            SITE_URL=${{ vars.SITE_URL }}
-            REPO_URL=${{ vars.REPO_URL }}
+          # build-args: |
+          #   SITE_URL=${{ vars.SITE_URL }}
+          #   REPO_URL=${{ vars.REPO_URL }}
+          #   REPO_ICON=${{ vars.REPO_ICON }}
           tags: |
             ${{ vars.DOCKER_REGISTRY }}/${{ github.actor }}/docs:latest
             ${{ vars.DOCKER_REGISTRY }}/${{ github.actor }}/docs:${{ github.sha }}

@@ -4,10 +4,13 @@ FROM squidfunk/mkdocs-material:latest AS builder
 # Copiamo il codice sorgente del sito
 COPY . /docs
 
-ARG SITE_URL
-ARG REPO_URL
-ENV SITE_URL=${SITE_URL}
-ENV REPO_URL=${REPO_URL}
+# ARG SITE_URL
+# ARG REPO_URL
+# ENV SITE_URL=${SITE_URL}
+# ENV REPO_URL=${REPO_URL}
+ENV SITE_URL=
+ENV REPO_URL=
+ENV REPO_ICON=
 
 # Generiamo le pagine HTML
 RUN mkdocs build --site-dir /app/site
