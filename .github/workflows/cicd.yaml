@@ -8,10 +8,10 @@ jobs:
   build-docker-image:
     if: ${{ vars.IS_GITEA }}
     runs-on: ubuntu-latest
-    env:
-      SITE_URL: ${{ vars.SITE_URL }}
-      REPO_URL: ${{ vars.REPO_URL }}
-      REPO_ICON: ${{ vars.REPO_ICON }}
+    # env:
+    #   SITE_URL: ${{ vars.SITE_URL }}
+    #   REPO_URL: ${{ vars.REPO_URL }}
+    #   REPO_ICON: ${{ vars.REPO_ICON }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,10 +30,10 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          # build-args: |
-          #   SITE_URL=${{ vars.SITE_URL }}
-          #   REPO_URL=${{ vars.REPO_URL }}
-          #   REPO_ICON=${{ vars.REPO_ICON }}
+          build-args: |
+            SITE_URL=${{ vars.SITE_URL }}
+            REPO_URL=${{ vars.REPO_URL }}
+            REPO_ICON=${{ vars.REPO_ICON }}
           tags: |
             ${{ vars.DOCKER_REGISTRY }}/${{ github.actor }}/docs:latest
             ${{ vars.DOCKER_REGISTRY }}/${{ github.actor }}/docs:${{ github.sha }}
