@@ -3,6 +3,8 @@ site_url: !ENV SITE_URL
 
 nav:
   - Home: index.md
+  - Utils:
+    - Shell: utils/shell.md
   - Test: test.md
   - Blog:
     - blog/index.md
