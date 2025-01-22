@@ -32,7 +32,8 @@ jobs:
               mkdocs-minify-plugin \
               mkdocs-redirects \
               mkdocs-rss-plugin \
-              mkdocs-glightbox
+              mkdocs-glightbox \
+              "mkdocs-material[imaging]"
       - name: Build and push
         env:
           SITE_URL: ${{ vars.SITE_URL }}
