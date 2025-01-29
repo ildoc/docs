@@ -31,8 +31,8 @@ jobs:
             REPO_URL=${{ vars.REPO_URL }}
             REPO_ICON=${{ vars.REPO_ICON }}
           tags: |
-            ${{ vars.DOCKER_REGISTRY }}/${{ github.actor }}/docs:latest
-            ${{ vars.DOCKER_REGISTRY }}/${{ github.actor }}/docs:${{ github.sha }}
+            ${{ vars.DOCKER_REGISTRY }}/${{ github.repository }}:latest
+            ${{ vars.DOCKER_REGISTRY }}/${{ github.repository }}:${{ github.sha }}
     
   update-devops-repo:
     if: ${{ vars.IS_GITEA }}
@@ -42,7 +42,7 @@ jobs:
       - name: Checkout homelab repo
         uses: actions/checkout@v4
         with: 
-          repository: ${{ github.actor }}/homelab
+          repository: ${{ github.repository }}
           ref: master
           path: homelab
           token: ${{ secrets.ACTIONS_PAT }}
@@ -50,7 +50,7 @@ jobs:
       - name: Replace SHA in deployment.yaml
         run: |
           FILE="homelab/kubernetes/applications/docs/deployment.yaml"
-          sed -i "s#${{ secrets.GITEA_URL }}/${{ github.actor }}/docs:[^:]*#${{ secrets.GITEA_URL }}/${{ github.actor }}/docs:${{ github.sha }}#" "$FILE"
+          sed -i "s#${{ secrets.GITEA_URL }}/${{ github.repository }}:[^:]*#${{ secrets.GITEA_URL }}/${{ github.repository }}:${{ github.sha }}#" "$FILE"
           cat "$FILE"
 
       - name: Commit and push
