@@ -42,7 +42,7 @@ jobs:
       - name: Checkout homelab repo
         uses: actions/checkout@v4
         with: 
-          repository: ${{ github.repository }}
+          repository: ${{ github.actor }}/homelab
           ref: master
           path: homelab
           token: ${{ secrets.ACTIONS_PAT }}
