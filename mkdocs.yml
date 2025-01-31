@@ -5,6 +5,8 @@ nav:
   - Home: index.md
   - Utils:
     - Shell: utils/shell.md
+    - Arch: utils/arch.md
+    - Windows: utils/windows.md
   - Test: test.md
   - Blog:
     - blog/index.md
