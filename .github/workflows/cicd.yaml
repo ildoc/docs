@@ -50,7 +50,7 @@ jobs:
       - name: Replace SHA in deployment.yaml
         run: |
           FILE="homelab/kubernetes/applications/docs/deployment.yaml"
-          sed -i "s#${{ secrets.GITEA_URL }}/${{ github.repository }}:[^:]*#${{ secrets.GITEA_URL }}/${{ github.repository }}:${{ github.sha }}#" "$FILE"
+          sed -i "s#${{ vars.DOCKER_REGISTRY }}/${{ github.repository }}:[^:]*#${{ vars.DOCKER_REGISTRY }}/${{ github.repository }}:${{ github.sha }}#" "$FILE"
           cat "$FILE"
 
       - name: Commit and push
