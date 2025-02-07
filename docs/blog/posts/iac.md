@@ -25,6 +25,8 @@ Un cluster di 3 VM di cui 1 control-plane e 2 worker. Traefik e cert-manager, SS
 ## Provisioning
 Il primo step è creare 3 virtual con Ubuntu 24.04
 
+### Packer
+
 ### Terraform
 
 

@@ -1,9 +1,10 @@
 services:
   mkdocs:
-    image: docsdev
-    build:
-      context: .
-      dockerfile: ./dev/Dockerfile
+    image: squidfunk/mkdocs-material:latest
+    # image: docsdev
+    # build:
+    #   context: .
+    #   dockerfile: ./dev/Dockerfile
     volumes:
       - .:/docs
     ports:

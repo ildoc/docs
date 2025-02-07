@@ -14,7 +14,7 @@ Inizialmente Kubernetes è nato come orchestratore di container Docker e support
 Ha iniziato a supportare anche altri engine attraverso dei magheggi e poi ha droppato il supporto a Docker per passare solo a containerd come predefinito
 
 #### nerdctl
-`nerdctl` è una cli docker-like per containerd alternativa a `ctr` che è quella di default ed è limitata nelle funzionalità e utilizzata soprattutto per debug
+`nerdctl` è una cli docker-like per containerd alternativa a `ctr` (che è quella di default ed è limitata nelle funzionalità e utilizzata soprattutto per debug)
 
 - supporta docker compose
 - supporta le nuove feature di containerd
@@ -100,14 +100,18 @@ in Kubernetes etcd viene usato per storare gli stati delle risorse
 ### Kube Api server
 
 Al comando di creazione di un pod, kube-apiserver autentica e valida la richiesta, crea la risorsa sul cluster ETCD e ritorna l'ok.
+
 kube-scheduler realizza che c'è un pod non assegnato a nessun nodo, identifica il nodo su cui crearlo e lo comunica a kube-apiserver.
+
 kube-apiserver aggiorna l'informazione nel cluster ETCD e passa l'informazione al kubelet del nodo corrispondente.
+
 kubelet crea il pod e istruisce il container runtime engine di deployare l'immagine dell'applicazione.
+
 una volta fatto, il kubelet aggiorna lo stato su kube-apiserver, che a sua volta aggiorna il cluster etcd
 
 kube-apiserver è il centro di ogni modifica che viene fatta al cluster.
 
-quindi:
+quindi riassumendo, kube-apiserver:
 
 1. Autentica l'utente
 2. Valida la richiesta
@@ -138,10 +142,9 @@ Il replication controller monitora lo stato dei replicaset e si assicura che sia
 Se un pod muore ne spawna uno nuovo.
 
 
-il controller manager si occupa di controllare tutti i controller
+Il controller manager si occupa di controllare tutti i controller
 
-Se il cluster è stato deployato con kubeadm, il controller manager è deployato come pod con nome kube-controller-manager-master
-i settings sono dentro `/etc/kubernetes/manifests/kube-controller-manager.yaml`
+Se il cluster è stato deployato con kubeadm, il controller manager è deployato come pod con nome kube-controller-manager-master e i settings sono dentro `/etc/kubernetes/manifests/kube-controller-manager.yaml`
 
 altimenti in `/etc/systemd/system/kube-controller-manager.service`
 
@@ -150,17 +153,16 @@ altimenti in `/etc/systemd/system/kube-controller-manager.service`
 
 è solo responsabile di decidere che pod va su che nodo, ma non crea direttamente il pod, quello è responsabilità del kubelet del nodo
 
-la decisione dipende da vari fattori, come per esempio le risorse del nodo
+La decisione dipende da vari fattori, come per esempio le risorse del nodo.
 
-Se il cluster è stato deployato con kubeadm, lo scheduler è deployato come pod con nome kube-scheduler-master
-i settings sono dentro `/etc/kubernetes/manifests/kube-scheduler.yaml`
+Se il cluster è stato deployato con kubeadm, lo scheduler è deployato come pod con nome kube-scheduler-master e i settings sono dentro `/etc/kubernetes/manifests/kube-scheduler.yaml`
 
 altimenti in `/etc/systemd/system/kube-scheduler.service`
 
 
 ### Kubelet
 
-l'agent kubelet sul nodo, registra il nodo nel cluster, crea i pod, monitora lo stato dei pod e riporta le informazioni all'apiserver
+L'agent kubelet sul nodo registra il nodo nel cluster, crea i pod, monitora lo stato dei pod e riporta le informazioni all'apiserver
 
 kubelet NON viene deployato con kubeadm e va sempre installato manualmente
 
@@ -174,17 +176,15 @@ kubeadm deploya kube-proxy come deamonset, quindi un pod di kube-proxy viene dep
 
 ### Pods
 
-il pod è l'oggetto più piccolo che si può creare in kubernetes
+Il pod è l'oggetto più piccolo che si può creare in kubernetes
 
-i container del pod condividono la stessa sottorete e si possono riferire tra loro su localhost
+I container del pod condividono la stessa sottorete e si possono riferire tra loro su localhost
 
 
 per deployare un pod con kubectl:
 
-`kubectl run nginx --image nginx` crea il pod con il container di nginx
-`kubectl run nginx --image nginx --port=80 --expose` crea il pod con il container di nginx e crea contestualmente un service di tipo clusterip che espode la porta del pod
-
-#### yaml
+- kubectl run nginx --image nginx` crea il pod con il container di nginx
+- `kubectl run nginx --image nginx --port=80 --expose` crea il pod con il container di nginx e crea contestualmente un service di tipo clusterip che espode la porta del pod
 
 ```yaml title="pod-definition.yml"
 apiVersion: v1
@@ -205,31 +205,6 @@ spec:
 ### ReplicaSet
 
 I ReplicaSet sono la versione nuova del ReplicationController
-
-
-=== "ReplicationController"
-    ```yaml title="rc-definition.yml"
-    apiVersion: v1
-    kind: ReplicationController
-    metadata: 
-        name: myapp-rc
-        labels:
-            app: myapp
-            type: front-end
-    spec:
-        template:
-            metadata: 
-                name: myapp-pod
-                labels:
-                    app: myapp
-                    type: front-end
-            spec:
-                containers:
-                    - name: nginx-container
-                    image: nginx
-        replicas: 3
-    ```
-    `kubectl create -f rc-definition.yml`
 
 === "ReplicaSet"
     ```yaml title="replicaset-definition.yml"
@@ -258,14 +233,38 @@ I ReplicaSet sono la versione nuova del ReplicationController
     ```
     `kubectl create -f replicaset-definition.yml`
 
-Il ruolo del Replicaset è monitorare i pod e assicurasi che ce ne sia up sempre il numero definito.
-Per capire che pod monitorare, si usano i selector e le label
+=== "ReplicationController"
+    ```yaml title="rc-definition.yml"
+    apiVersion: v1
+    kind: ReplicationController
+    metadata: 
+        name: myapp-rc
+        labels:
+            app: myapp
+            type: front-end
+    spec:
+        template:
+            metadata: 
+                name: myapp-pod
+                labels:
+                    app: myapp
+                    type: front-end
+            spec:
+                containers:
+                    - name: nginx-container
+                    image: nginx
+        replicas: 3
+    ```
+    `kubectl create -f rc-definition.yml`
 
+Il ruolo del Replicaset è monitorare i pod e assicurasi che ce ne sia up sempre il numero definito.
+
+Per capire che pod monitorare, si usano i selector e le label. La label del selector e quella del template del pod devono matchare, altrimenti in caso di scale up e scale down non si sa che pod usare.
 
 Per scalare il replicaset, o si cambia il numero di repliche nel file oppure
 
-`kubectl scale --replicas=6 -f replicaset-definition.yml`
-`kubectl scale --replicas=6 replicaset myapp-replicaset`
+- `kubectl scale --replicas=6 -f replicaset-definition.yml`
+- `kubectl scale --replicas=6 replicaset myapp-replicaset`
 
 usando il comando scale e indicando il file, il numero di repliche nel file NON viene aggiornato
 
@@ -302,12 +301,14 @@ Il deployment crea il replicaset e a sua volta i pod
 
 I service permettono la connettività tra pod
 
-NodePort: espongono una porta interna su una porta del nodo
-ClusterIp: crea un virtual ip nel cluster per permettere la comunicazione tra diversi servizi
-LoadBalancer: per distribuire il carico tra diversi servizi
+- NodePort: espongono una porta interna su una porta del nodo
+- ClusterIp: crea un virtual ip nel cluster per permettere la comunicazione tra diversi servizi
+- LoadBalancer: per distribuire il carico tra diversi servizi
 
 La porta del pod è la TargetPort
+
 La porta del service è la Port
+
 La porta del nodo per accedere al servizio dall'esterno è la NodePort (range 30000-32767)
 
 #### NodePort
@@ -375,14 +376,16 @@ funziona solo in ambienti supportati (GCP, AWS, Azure), altrimenti equivale al f
 ### Namespace
 
 I namespace servono a gruppare risorse (isolation).
+
 Le risorse all'interno dello stesso namespace si vedono tra di loro solo per il nome.
 
 Per raggiungere risorse di un altro namespace, si può usare 
-<servicename>.<namespace>.<service>.<domain>
+`<servicename>.<namespace>.<service>.<domain>`
+
 es. `db-service.dev.svc.cluster.local`
 
-`kubectl create -f pod-definition.yml` crea il pod nel namespace default
-`kubectl create -f pod-definition.yml --namespace=dev` lo crea nel namespace dev
+- `kubectl create -f pod-definition.yml` crea il pod nel namespace default
+- `kubectl create -f pod-definition.yml --namespace=dev` lo crea nel namespace dev
 
 altrimenti si può spostare l'indicazione del namespace dentro la il manifest della risorsa, sotto metadata
 
@@ -432,11 +435,11 @@ Non dover creare un file per poi applicarlo è più rapido.
 
 Un approccio ibrido può essere chiamarte il comando imperativo con i flag `--dry-run=client -o yaml > nomefile.yaml` per farsi creare il manifest, modificarlo e poi applicarlo con kubectl apply
 
-https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands
-https://kubernetes.io/docs/reference/kubectl/conventions/
+- <https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands>
+- <https://kubernetes.io/docs/reference/kubectl/conventions/>
 
 
-https://github.com/kodekloudhub/certified-kubernetes-administrator-course
+- <https://github.com/kodekloudhub/certified-kubernetes-administrator-course>
 
 
 ## Scheduling
@@ -463,9 +466,9 @@ spec:
 
 ### Manual scheduling
 
-il nodename non è modificabile per un pod già creato, ma si può utilizzare un binding
+Il nodeName non è modificabile per un pod già creato, ma si può utilizzare un binding
 
-```yaml title="pod-definition.yml"
+```yaml title="binding-definition.yml"
 apiVersion: v1
 kind: Binding
 metadata: 
@@ -476,7 +479,7 @@ target:
     name: node02
 ```
 
-#### Labels e selector
+### Labels e selector
 
 Le label sono proprietà applicate agli oggetti, i selector aiutano a filtrare gli oggetti per le loro label
 
@@ -485,7 +488,7 @@ Le annotations sono note informative
 `kubectl get pods --selector app=App1`
 
 
-#### Taints and tolerations
+### Taints and tolerations
 
 con i taints si possono restringere i nodi su cui spawnare i pod
 una toleration permette di overridare il taint
@@ -497,11 +500,13 @@ I taint sono applicati ai nodi
 `kubectl taint nodes node-name key=value:taint-effect`
 
 taint-effect:
+
 - NoSchedule: evita che il pod venga schedulato sul nodo
 - PreferNoSchedule: il sistema prova a evitare di schedulare pod sul nodo
 - NoExecute: i pod non vengono schedulati sul nodo e quelli presenti vengono evicted se non hanno toleration
 
 Le toleration vengono applicate ai pod
+
 per esempio un nodo con `kubectl taint nodes node1 app=blue:NoSchedule` avrà una toleration fatta così
 
 ```yaml title="pod-definition.yml"
@@ -531,13 +536,11 @@ Di default in un cluster kubernetes il master node ha il taint noschedule
 per rimuovere un taint il comando è lo stesso ma con un - alla fine
 es. `kubectl taint nodes node1 app=blue:NoSchedule-`
 
-
-
-#### Node Selector
+### Node Selector
 Le label possono essere applicate anche ai nodi per poi indirizzare la schedulazione dei pod
 
-`kubectl label nodes <node-name> <label-key>=<label-value>`
-`kubectl label nodes node01 size=Large`
+- `kubectl label nodes <node-name> <label-key>=<label-value>`
+- `kubectl label nodes node01 size=Large`
 
 ```yaml title="pod-definition.yml"
 apiVersion: v1
@@ -566,13 +569,13 @@ Per non diventare pazzi con vi, nella shell lanciare `export KUBE_EDITOR=nano`
 
 ### Repo con appunti
 
-https://github.com/kodekloudhub/certified-kubernetes-administrator-course
+<https://github.com/kodekloudhub/certified-kubernetes-administrator-course>
 
 ### Get All
 Per ottenere la lista di tutti gli oggetti, `kubectl get all`
 
 ### Kubectl
-https://kubernetes.io/docs/reference/kubectl/conventions/
+<https://kubernetes.io/docs/reference/kubectl/conventions/>
 
 Create an NGINX Pod
 
