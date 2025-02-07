@@ -533,9 +533,24 @@ es. `kubectl taint nodes node1 app=blue:NoSchedule-`
 
 
 
+#### Node Selector
+Le label possono essere applicate anche ai nodi per poi indirizzare la schedulazione dei pod
 
+`kubectl label nodes <node-name> <label-key>=<label-value>`
+`kubectl label nodes node01 size=Large`
 
-
+```yaml title="pod-definition.yml"
+apiVersion: v1
+kind: Pod
+metadata: 
+    name: nginx
+spec:
+    containers:
+    - name: nginx
+      image: nginx
+    nodeSelector:
+        size: Large
+```
 
 
 
