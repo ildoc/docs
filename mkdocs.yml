@@ -5,6 +5,7 @@ nav:
   - Home: index.md
   - Certs:
     - CAPA: certs/capa.md
+    - CKA: certs/cka.md
   - Utils:
     - Shell: utils/shell.md
     - Arch: utils/arch.md
