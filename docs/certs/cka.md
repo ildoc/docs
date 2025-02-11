@@ -7,6 +7,9 @@ Appunti del corso https://learn.kodekloud.com/courses/cka-certification-course-c
 !!! note annotate "Per non diventare pazzi con vi"
     Nella shell lanciare `export KUBE_EDITOR=nano`
 
+!!! note annotate "Repo ufficale con appunti"
+    <https://github.com/kodekloudhub/certified-kubernetes-administrator-course>
+
 ## Core Concepts
 
 ### Docker vs containerd
@@ -207,6 +210,7 @@ spec:
 I ReplicaSet sono la versione nuova del ReplicationController
 
 === "ReplicaSet"
+
     ```yaml title="replicaset-definition.yml"
     apiVersion: apps/v1
     kind: ReplicaSet
@@ -225,7 +229,7 @@ I ReplicaSet sono la versione nuova del ReplicationController
             spec:
                 containers:
                     - name: nginx-container
-                    image: nginx
+                      image: nginx
         replicas: 3
         selector: 
             machtLabels:
@@ -234,6 +238,7 @@ I ReplicaSet sono la versione nuova del ReplicationController
     `kubectl create -f replicaset-definition.yml`
 
 === "ReplicationController"
+
     ```yaml title="rc-definition.yml"
     apiVersion: v1
     kind: ReplicationController
@@ -252,7 +257,7 @@ I ReplicaSet sono la versione nuova del ReplicationController
             spec:
                 containers:
                     - name: nginx-container
-                    image: nginx
+                      image: nginx
         replicas: 3
     ```
     `kubectl create -f rc-definition.yml`
@@ -288,7 +293,7 @@ spec:
         spec:
             containers:
                 - name: nginx-container
-                image: nginx
+                  image: nginx
     replicas: 3
     selector: 
         machtLabels:
@@ -441,6 +446,44 @@ Un approccio ibrido può essere chiamarte il comando imperativo con i flag `--dr
 
 - <https://github.com/kodekloudhub/certified-kubernetes-administrator-course>
 
+### Note Generali
+
+#### Get All
+Per ottenere la lista di tutti gli oggetti, `kubectl get all`
+
+#### Kubectl
+<https://kubernetes.io/docs/reference/kubectl/conventions/>
+
+Create an NGINX Pod
+
+`kubectl run nginx --image=nginx`
+
+Generate POD Manifest YAML file (-o yaml). Don’t create it(–dry-run)
+
+`kubectl run nginx --image=nginx --dry-run=client -o yaml`
+
+Create a deployment
+
+`kubectl create deployment --image=nginx nginx`
+
+Generate Deployment YAML file (-o yaml). Don’t create it(–dry-run)
+
+`kubectl create deployment --image=nginx nginx --dry-run=client -o yaml`
+
+Generate Deployment YAML file (-o yaml). Don’t create it(–dry-run) and save it to a file.
+
+`kubectl create deployment --image=nginx nginx --dry-run=client -o yaml > nginx-deployment.yaml`
+
+Make necessary changes to the file (for example, adding more replicas) and then create the deployment.
+
+`kubectl create -f nginx-deployment.yaml`
+
+OR
+
+In k8s version 1.19+, we can specify the –replicas option to create a deployment with 4 replicas.
+
+`kubectl create deployment --image=nginx nginx --replicas=4 --dry-run=client -o yaml > nginx-deployment.yaml`
+
 
 ## Scheduling
 
@@ -555,54 +598,584 @@ spec:
         size: Large
 ```
 
+### Node affinity
+
+L'affinity si usa per assicurarsi che un pod venga spawnato su un particolare nodo
+Con ii nodeSelector non si possono usare combinazioni, con l'affinity si
+
+=== "Node Selector"
+
+    ```yaml title="pod-definition.yml"
+    apiVersion: v1
+    kind: Pod
+    metadata: 
+        name: nginx
+    spec:
+        containers:
+        - name: nginx
+        image: nginx
+        nodeSelector:
+            size: Large
+    ```
+=== "Node Affinity"
+
+    ```yaml title="pod-definition.yml"
+    apiVersion: v1
+    kind: Pod
+    metadata: 
+        name: nginx
+    spec:
+        containers:
+        - name: nginx
+        image: nginx
+        affinity:
+            nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                        - matchExpressions:
+                          - key: size
+                            operator: In
+                            values:
+                            - Large
+    ```
+Se le regole di affinity non matchano nessun nodo
+
+esistenti:
+
+- requiredDuringSchedulingIgnoredDuringExecution: se la regola non matcha, il pod non viene schedulato
+- preferredDuringSchedulingIgnoredDuringExecution: se la regola non matcha, viene schedulato secondo lo scheduling normale
+
+i cambi effettuati sul nodo durante l'esecuzione del pod non hanno impatti
+
+plannate:
+- requiredDuringSchedulingRequiredDuringExecution:
+- preferredDuringSchedulingRequiredDuringExecution:
+
+come sopra, solo che i cambi effettuati su nodo durante l'esecuzione causano l'evict del pod nel caso le regole non matchino più
+
+<https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/>
 
 
+### Taints and Tolerations vs Affinity
+
+Taints e tolerations possono essere combinati con l'affinity per indirizzare precisamente dei pod su dei nodi specifici e prevenire che altri pod vengano schedulati su quei nodi
+
+### Resource limits
+
+- resource requests: sono le risorse minime del pod
+- resource limits: risorse massime che il pod può usare
+
+le risorse sono considerate per ciascun container all'interno del pod
+
+se è specificato solo il limite, allora le requests vengono impostate uguale al limite
+
+usando i limitrange si possono impostare limiti di default per tutti i pod del cluster
+
+```yaml title="limit-range-cpu.yml"
+apiVersion: v1
+kind: LimitRange
+metadata: 
+    name: cpu-resource-constraint
+spec:
+    limits:
+    - default:
+        cpu: 500m
+      defaultRequest:
+        cpu: 500m
+      max:
+        cpu: "1"
+      min:
+        cpu: 100m
+      type: Container
+```
+
+```yaml title="limit-range-memory.yml"
+apiVersion: v1
+kind: LimitRange
+metadata: 
+    name: cpu-resource-constraint
+spec:
+    limits:
+    - default:
+        memory: 1Gi
+      defaultRequest:
+        memory: 1Gi
+      max:
+        memory: 1Gi
+      min:
+        memory: 500Mi
+      type: Container
+```
+
+i pod creati prima del limitrange non vengono modificati
+
+i resource quota sono applicati a livello di namespace
+
+```yaml title="resource-quota.yml"
+apiVersion: v1
+kind: ResourceQuota
+metadata: 
+    name: my-resource-quota
+spec:
+    hard:
+        requests.cpu: 4
+        requests.memory: 4Gi
+        limits.cpu: 10
+        limits.memory: 10Gi
+```
+
+### DeamonSet
+
+i DeamonSet sono come i replicaset, ma si occupano di spawnare un pod per ciascun nodo.
+se viene aggiunto un nodo, il deamonset spawna un nuovo pod
+
+use cases:
+- monitoring
+- logs
+
+eper esempio il kube-proxy è un deamonset
+
+=== "DaemonSet"
+
+    ```yaml title="daemonset-definition.yml"
+    apiVersion: apps/v1
+    kind: DaemonSet
+    metadata: 
+        name: monitoring-daemon
+    spec:
+        selector: 
+            machtLabels:
+                type: monitoring-agent
+        template:
+            metadata: 
+                labels:
+                    app: monitoring-agent
+            spec:
+                containers:
+                    - name: monitoring-agent
+                      image: monitoring-agent
+    ```
+=== "ReplicaSet"
+
+    ```yaml title="replicaset-definition.yml"
+    apiVersion: apps/v1
+    kind: ReplicaSet
+    metadata: 
+        name: monitoring-daemon
+    spec:
+        selector: 
+            machtLabels:
+                type: monitoring-agent
+        template:
+            metadata: 
+                labels:
+                    app: monitoring-agent
+            spec:
+                containers:
+                    - name: monitoring-agent
+                      image: monitoring-agent
+    ```
+
+`kubectl get daemonset`
+
+prima della versione 1.12 veniva usato nodeSelector per istruire su che nodo utilizzare, dalla 1.12 in poi viene utilizzata l'affinity
 
 
+### Static Pods
+
+kubelet può essere impostato per monitorare una folder sul noto in cui possono essere messi dei manifest di definizione di pod.
+
+Kubelet cerca di mantenere il sistema in sync con i manifest, aggiornando lo stato dei pod in caso di modifiche o cancellazioni.
+
+In questo modo possono essere creati solo pod, non deployment o replicaset.
+
+I pod creati in questo modo sono detti static pods.
+
+I pod creati in questo modo sono editabili solo sul nodo, da kubectl se ne vede solo una copia readonly
+
+per trovare la folder, `ps -aux | grep kubelet` e poi cercare per il parametro --config
 
 
+### Multiple Schedulers
 
-## Note generali
+per istruire un pod ad essere schedulato da un particolare scheduler si usa il valore di scheduler name
 
-### Nano come editor
-Per non diventare pazzi con vi, nella shell lanciare `export KUBE_EDITOR=nano`
 
-### Repo con appunti
+```yaml title="pod-definition.yml"
+apiVersion: v1
+kind: Pod
+metadata: 
+    name: nginx
+spec:
+    containers:
+    - name: nginx
+      image: nginx
+    schedulerName: my-custom-scheduler
+```
 
-<https://github.com/kodekloudhub/certified-kubernetes-administrator-course>
+se lo scheduler non esiste o è mal configurato, il pod rimane in stato pending
 
-### Get All
-Per ottenere la lista di tutti gli oggetti, `kubectl get all`
+per vedere che scheduler ha deployato che pod, si può usare il comando `kubectl get events -o wide` oppure si possono vedere i log dello scheduler con `kubectl logs my-custom-scheduler --namespace=kube-system`
 
-### Kubectl
-<https://kubernetes.io/docs/reference/kubectl/conventions/>
+### Scheduler Profiles
 
-Create an NGINX Pod
+Quando vengono creati, i pod vengono messi in una scheduling queue in attesa di venire assegnati a un nodo.
 
-`kubectl run nginx --image=nginx`
+Per ordinare i pod nella coda, si può usare una priorityclass
 
-Generate POD Manifest YAML file (-o yaml). Don’t create it(–dry-run)
+```yaml title="priorityclass-definition.yml"
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata: 
+    name: high-priority
+spec:
+    value: 1000000
+    globalDefault: false
+    description: "this priority class should be used for xys service pods only"
+```
 
-`kubectl run nginx --image=nginx --dry-run=client -o yaml`
+dove vegono ordinati per value
 
-Create a deployment
+```yaml title="pod-definition.yml"
+apiVersion: v1
+kind: Pod
+metadata: 
+    name: nginx
+spec:
+    priorityClassName: high-priority
+    containers:
+    - name: nginx
+      image: nginx
+      resources:
+        requests:
+          memory: "1Gi"
+          cpu: 10
+```
 
-`kubectl create deployment --image=nginx nginx`
+poi i pod entrano in una fase di filtering, dove i nodi che non possono runnare i pod vengono filtrati via
 
-Generate Deployment YAML file (-o yaml). Don’t create it(–dry-run)
+poi c'è la fase di score, dove ai nodi rimanenti viene assegnato uno score in base all'algoritmo di scheduling
 
-`kubectl create deployment --image=nginx nginx --dry-run=client -o yaml`
+alla fine c'è la fase di binding, dove viene fatto il binding tra pod e nodo scelto
 
-Generate Deployment YAML file (-o yaml). Don’t create it(–dry-run) and save it to a file.
 
-`kubectl create deployment --image=nginx nginx --dry-run=client -o yaml > nginx-deployment.yaml`
+- nella fase di scheduling viene usato il plugin di PrioritySort per ordinare i nodi nella coda
+- nella fase di filtering viene usato NodeResourcesFit per eliminare i nodi senza abbastanza risorse, oppure NodeName nel caso sia indicato il nome del nodo nella definizione del pod, oppure NodeUnschedulable per filtrare via i nodi con flag Unschedulable a true (nel caso di cordon o drain)
+- nella fase di Scoring viene usato NodeResourcesFit, oppure ImageLocality per dare uno score più alto ai nodi che hanno già l'immagine del container del pod
+- nella fase di binding c'è il DefaultBinder
 
-Make necessary changes to the file (for example, adding more replicas) and then create the deployment.
+in ciascuno stage ci sono uno o più extension point nel quale ci si può inserire un plugin per modificare il comportamento di default
 
-`kubectl create -f nginx-deployment.yaml`
 
-OR
+dalla v 1.18 di kubernetes si possono configurare più profile per la stessa KubeSchedulerConfiguration
 
-In k8s version 1.19+, we can specify the –replicas option to create a deployment with 4 replicas.
+```yaml title="my-scheduler-config.yml"
+apiVersion: kubescheduler.config.k8s.io/v1
+kind: KubeSchedulerConfiguration
+profiles: 
+- schedulerName: my-scheduler-2
+  plugins:
+    score:
+        disabled:
+        - name: TaintToleration
+        enabled:
+        - name: MyCustomPluginA
+        - name: MyCustomPluginB
 
-`kubectl create deployment --image=nginx nginx --replicas=4 --dry-run=client -o yaml > nginx-deployment.yaml`
+- schedulerName: my-scheduler-3
+  plugins:
+    preScore:
+        disabled:
+        - name: '*'
+    score:
+        disabled:
+        - name: '*'
+
+- schedulerName: my-scheduler-4
+```
+
+<https://github.com/kubernetes/community/blob/master/contributors/devel/sig-scheduling/scheduling_code_hierarchy_overview.md>
+
+<https://kubernetes.io/blog/2017/03/advanced-scheduling-in-kubernetes/>
+
+<https://jvns.ca/blog/2017/07/27/how-does-the-kubernetes-scheduler-work/>
+
+<https://stackoverflow.com/questions/28857993/how-does-kubernetes-scheduler-work>
+
+
+### Admission Controller
+
+oltre a usare certificati e RBAC per definire autenticazione e autorizzazione, si può scendere più nel dettaglio del contenuto dei manifest con un Admission controller, per esempio per permettere di usare immagini solo da certi registry, oppre eviare l'uso di tag latest, obbligare la presenza di certi metadata
+
+l'admission controller può cambiare la request oppure effettuare certe azioni prima/dopo
+
+esempio: NamespaceExists controlla che non siano create risorse in namespace che non esistono, è un admission controller base abilitato di default
+
+NamespaceAutoProvision non è abilitato di default e crea il namespace in caso non esista
+
+per vedere la lista degli admission controller abilitati `kube-apiserver -h | grep enable-admission-plugins`
+
+il comando dev'essere eseguito nel controlplane
+
+`kubectl exec kube-apiserver-controlplane -n kube-system -- kube-apiserver -h | grep enable-admission-plugins`
+
+per abilitare un nuovo admission controller bisogna aggiungerlo al flag --enable-admission-plugins del kube-apiserver o nel suo manifest
+
+stessa cosa per disabilitarlo
+
+#### Validating and mutating Admission Controllers
+
+i validating ac validano (NamespaceExists), i mutating ac modificano la request (DefaultStorageClass)
+
+si possono specificare i propri admission criteria tramite i webhook MutatingAdmissionWbhook e ValidatingAdmissionWebhook
+
+I webhook vengono validati per ultimi, passano come request un oggetto di tipo AdmissionReview con tutti i dettagli della richiesta e ritornano un AdmissionReview con response
+
+il webhook server può essere deployato anche nel cluster stesso
+
+
+```yaml title="my-admission-webhook.yml"
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+    name: "pod-policy.example.com"
+    clientConfig:
+        # url: "https://external-server.example.com
+        service:
+            namespace: "webhook-namespace"
+            name: "webhook-service"
+        caBundle: "aaaaaa.....aaaa"
+    rules:
+    - apiGroups: [""]
+      apiVersion: ["v1"]
+      operations: ["CREATE"]
+      resources: ["pods"]
+      scope: "Namespaced"
+```
+
+il service comunica tramite ssl quindi va creato un certificato
+
+## Logging and Monitoring
+
+### Monitoring
+kubernetes non ha una soluzione buildtin per il monitoring e metriche
+
+cAdvisor è un componente di kubelet che raccoglie le metriche del nodo e le espone tramite l'api server
+
+`kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml`
+
+una volta installato, è possibile vedere l'utilizzo delle risorse con `kubectl top nodes` o `kubectl top pods`
+
+
+### Application logs
+
+per vedere i log di un pod `kubectl logs -f nome-pod`
+
+per vedere i log di uno specifico container, `kubectl logs -f nome-pod nome-container`
+
+## Application lifecycle management
+
+### Rolling updates and rollback
+
+quando si crea un rollout crea un nuovo deployment revision
+
+`kubectl rollout status deployment/myapp-deployment`
+
+per vedere la history dei deployment
+
+`kubectl rollout history deployment/myapp-deployment`
+
+ci sono due strategie: rolling e recreate
+
+```yaml title="deployment-definition.yml"
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+    name: myapp-deployment
+    labels:
+        app: myapp
+        type: front-end
+spec:
+    template:
+        metadata: 
+            name: myapp-pod
+            labels:
+                app: myapp
+                type: front-end
+        spec:
+            containers:
+                - name: nginx-container
+                  image: nginx
+    replicas: 3
+    selector: 
+        machtLabels:
+```
+
+sull'aggiornamento di un deployment viene creato un nuovo replicaset e i vecchi pod vengono scalati progressivamente a 0 mentre i nuovi prendono il loro posto
+
+`kubectl get replicasets`
+
+per fare un rollback
+
+`kubectl rollout undo deployment/myapp-deployment`
+
+### Commands and arguments
+
+```yaml title="pod-definition.yml"
+apiVersion: v1
+kind: Pod
+metadata: 
+    name: ubuntu-sleeper
+spec:
+    containers:
+        - name: ubuntu
+          image: ubuntu
+          command: ["sleep"]
+          args: ["10"]
+```
+
+### Env vars
+
+```yaml title="pod-definition.yml"
+apiVersion: v1
+kind: Pod
+metadata: 
+    name: ubuntu-sleeper
+spec:
+    containers:
+        - name: ubuntu
+          image: ubuntu
+          env:
+          - name: APP_COLOR
+            value: pink
+          - name: APP_COLOR_FROM_CONFIGMAP
+            valueFrom:
+                configMapKeyRef:
+                    name: config-map-name
+                    key: APP_COLOR
+          - name: APP_COLOR_FROM_SECRET
+            valueFrom:
+                secretKeyRef:
+```
+
+### Configmaps
+
+`kubectl create configmap appconfig --from-literal=color=blue`
+
+```yaml title="configmap-definition.yml"
+apiVersion: v1
+kind: ConfigMap
+metadata: 
+    name: app-config
+data:
+    APP_COLOR: blue
+    APP_MODE: prod
+```
+
+```yaml title="pod-definition.yml"
+apiVersion: v1
+kind: Pod
+metadata: 
+    name: ubuntu
+spec:
+    containers:
+        - name: ubuntu
+          image: ubuntu
+          envFrom:
+          - configMapRef:
+            name: app-config
+```
+
+### Secrets
+
+`kubectl create secret generic nome --from-literal=password=lallallero`
+
+```yaml title="secret-definition.yml"
+apiVersion: v1
+kind: Secret
+metadata: 
+    name: app-secret
+data:
+    DB_HOST: Y2lhbw==
+    DB_USER: Y2lhbw==
+```
+usando la sintassi imperativa i valori vengono già encodati
+
+per convertire al volo in base64 `echo -n 'testo' | base64`
+
+per decodare `echo -n 'Y2lhbw==' | base64 --decode`
+
+```yaml title="pod-definition.yml"
+apiVersion: v1
+kind: Pod
+metadata: 
+    name: ubuntu
+spec:
+    containers:
+        - name: ubuntu
+          image: ubuntu
+          envFrom:
+          - secretRef:
+               name: app-secret
+          env:
+          - name: DB_PASSWORD
+            valueFrom:
+               secretKeyRef:
+                  name: app-secret
+                  key: DB_PASSWORD
+          volume:
+          - name: app-secret-volume
+            secret:
+               secretName: app-secret
+```
+
+i secret non sono criptati, ma encodati
+
+tutti i pod o i deployment in un namespace condividono gli stessi secrets
+
+su etcd non vengono criptati di default
+
+#### Abilitare encryption at rest in etcd
+
+<https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/>
+
+### Multi container pods
+
+```yaml title="pod-definition.yml"
+apiVersion: v1
+kind: Pod
+metadata: 
+    name: ubuntu
+spec:
+    containers:
+        - name: ubuntu
+          image: ubuntu
+        - name: busybox
+          image: busybox
+          
+```
+
+in un contesto multicontainer si possono usare delle immagini per fare un setup dell'ambiente. in questo caso si usa initContainers
+
+```yaml title="pod-definition.yml"
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  labels:
+    app: myapp
+spec:
+  containers:
+  - name: myapp-container
+    image: busybox:1.28
+    command: ['sh', '-c', 'echo The app is running! && sleep 3600']
+  initContainers:
+  - name: init-myservice
+    image: busybox
+    command: ['sh', '-c', 'git clone  ;']
+```
+
+se l'initcontainer fallisce a completare, kubernetes lo restarta in automatico
+
+
+## Cluster maintenance
