@@ -1179,3 +1179,182 @@ se l'initcontainer fallisce a completare, kubernetes lo restarta in automatico
 
 
 ## Cluster maintenance
+
+### OS Upgrades
+
+per fare operazioni di manutenzione sull'os di un nodo, si può fare il drain del nodo per svuotarlo dai pod con `kubectl drain nomenodo`
+
+in questo modo il nodo viene marcato come Unschedulable e bisogna farne l'uncordon con `kubectl uncordon nomenodo`
+
+con `kubectl cordon nomenodo` si marca un nodo come Unschedulable e non vengono creati nuovi nodi
+
+### Kubernetes Upgrades
+
+Prima si fa l'upgrade del master node e poi i worker
+
+per la durata dell'upgrade del master, le funzionalità di amministrazione e scheduling sono interrotte, ma i pod continuano ad essere operativi sui vari worker
+
+- strategia 1: aggiornare tutti i worker contemporaneamente -> causa downtime dei pod
+- strategia 2: aggiornare un nodo alla volta -> i pod vengono rischedulati sui nodi disponibili -> no downtime
+- strategia 3: se si è su un ambiente cloud, è più comodo provisionare nuovi nodi già upgradati decommissionare i vecchi -> i pod vengono rischedulati
+
+con `kubeadm upgrade plan` si ha una panoramica degli upgrade disponibili
+
+<https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/>
+
+step 0: drain del controlplane
+
+step 1: update della versione del repository dentro `/etc/apt/sources.list.d/kubernetes.list`
+
+step 2: `sudo apt update && sudo apt-cache madison kubeadm` per vedere l'ultima versione disponibile
+
+step 3: upgrade di kubeadm con `sudo apt-mark unhold kubeadm && sudo apt-get update && sudo apt-get install -y kubeadm='1.3x.x' && sudo apt-mark hold kubeadm`
+
+step 4: verifica con `sudo kubeadm upgrade plan`
+
+step 5: `sudo kubeadm upgrade apply v1.3x.x`
+
+step 6: upgrade di kubelet e kubectl con `sudo apt-mark unhold kubelet kubectl && sudo apt-get update && sudo apt-get install -y kubelet='1.3x.x-*' kubectl='1.3x.x-*' && sudo apt-mark hold kubelet kubectl`
+
+step 7: restart di kubelet con `sudo systemctl daemon-reload && sudo systemctl restart kubelet`
+
+step 8: uncordon del controlplane
+
+per i worker gli step sono gli stessi tranne il 5, che è `sudo kubeadm upgrade node`
+
+
+### Backup e restore
+
+anche se il metodo preferibile è l'approccio dichiarativo in modo da avere tutti i manifest versionabili in un repository, potrebbero esserci oggetti creati in maniera imperativa
+
+per recuperarli, il modo più sicuro e fare query sull'api-server in modo da ottenere TUTTO
+
+`kubectl get all --all-namespaces -o yaml > all-deploy-services.yaml`
+
+ci sono tool che usano apiserver per automatizzare i backup
+
+per quanto riguarda etcd, i dati sono distribuiti sui vari nodi.
+
+etcd ha una funzionalità di snapshot incorporata
+
+`ETCDCTL_API=3 etcdctl snapshot save snapshot.db`
+
+`ETCDCTL_API=3 etcdctl snapshot status snapshot.db`
+
+per restorare uno snapshot etcd bisogna prima stoppare kube-apiserver
+
+`ETCDCTL_API=3 etcdctl snapshot restore snapshot.db --data-dir /var/lib/etcd-from-backup`
+
+per tutti i comandi etcdctl bisogna specificare l'endpoint del server, il cacert, il cert e la key
+
+<https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#backing-up-an-etcd-cluster>
+
+<https://github.com/etcd-io/website/blob/main/content/en/docs/v3.6/op-guide/recovery.md>
+
+
+## Security
+
+### Primitives
+
+i nodi dovrebbero avere solo ssh key auth
+
+l'autenticazione all'apiserver si può controllare con:
+
+- username e password storati in file statici
+- username e token storati in file statici
+- certificati
+- provider esterni tipo ldap
+- service account
+
+l'authorization con:
+
+- RBAC
+- ABAC (attribute based authorization control)
+- node authorization
+- webhook mode
+
+tutti le comunicazioni tra l'api server e tutti gli altri componenti avviene con certificati TLS
+
+tutte le applicazioni del cluster possono di default parlare tra di loro, la cosa si può restringere tramite network policies
+
+### Authentication
+
+kubernates nativamente non gestisce user account, si basa su fonti esterne. però gestisce service account
+
+#### basic authentication
+
+si crea un csv con 3 colonne: password, username, userid
+
+si passa come argomento al kubeapiservice con `--basic-auth-file=miofile.csv`
+
+per autenticare le chiamate, si specificano user e pass nella chiamata curl con `-u`
+
+nel file ci può essere una quarta colonna per il gruppo dell'utente.
+
+il file può anche essere composto da token, username, userid, gruppo.
+
+in questo caso il token nella chiamata curl si mette nell'authorization header, es. `--header "Authorization: Bearer <token>"`
+
+### TLS
+
+per convenzione, i certificati criptati con chiave pubblica hanno estensione *.crt e *pem, mentre quelli con chiave privata *.key o *-key.pem
+
+| Server | Cert | Public key |
+|---|---|---|
+| kube-api | apiserver.crt | apiserver.key |
+| etcd-server | etcdserver.crt | etcdserver.key |
+| kubelet | kubelet.crt | kubelet.key |
+
+
+#### Creare i certificati
+
+Certificato della certificate authority: ca.key
+
+prima si genera la chiave privata `openssl genrsa -out ca.key 2048`
+
+poi si genera la signing request `openssl req -new -key ca.key -subj "/CN=KUBERNETES-CA" -out ca.csr`
+
+con la signin request e la privatekey si crea il certificato firmato con `openssl x509 -req -in ca.csr -signkey ca.key -out ca.crt`
+    
+---
+
+Certificato client dell'admin
+
+prima si genera la chiave privata `openssl genrsa -out admin.key 2048`
+
+poi si genera la signing request `openssl req -new -key admin.key -subj "/CN=kube-admin" -out admin.csr`
+
+nel CN ci va il nome dell'utente, e si può anche specificare il gruppo di appartenenza con il flag /O, es: `/CN=kube-admin/O=system:masters`
+
+con la signin request e la privatekey si crea il certificato firmato con `openssl x509 -req -in admin.csr -CA ca.crt -CAkey ca.key -out admin.crt`
+
+---
+
+Per etcd bisogna generare dei certificati peer per ciascun nodo del cluster etcd e poi aggiungerli nelle opzioni di startup
+
+Per l'apiserver bisogna specificare nel certificato tutti i nomi dns e gli ip con il quale può venir chiamato
+
+`openssl genrsa -out apiserver.key 2048`
+
+`openssl req -new -key apiserver.key -subj "/CN=kube-apiserver" -out apiserver.csr`
+
+per farlo si crea un cnf file
+
+``` hl_lines="9-14"
+[req]
+req_extensions = v3_req
+distinguished_name = req_distinguished_name
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = kubernetes
+DNS.2 = kubernetes.default
+DNS.2 = kubernetes.default.svc
+DNS.2 = kubernetes.default.svc.cluster.local
+IP.1 = 10.96.0.1
+IP.2 = 172.17.0.87
+```
+
+I certificati dei kubelet devono avere come nome il nome del nodo
