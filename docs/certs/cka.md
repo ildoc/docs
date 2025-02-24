@@ -1178,6 +1178,108 @@ spec:
 se l'initcontainer fallisce a completare, kubernetes lo restarta in automatico
 
 
+### Autoscaling
+
+#### Horizontal Pod Autoscaler
+
+HPA (horizontal pod autoscaler) scala automaticamente il numero di pod basandosi su soglie impostate o custom metrics
+
+`kubectl autoscale deployment my-app --cpu-percent=50 --min=1 --max=10` crea un hpa che monitora le risorse del pod rispetto alle sue resources e crea o distrugge pod di conseguenza
+
+`kubectl get hpa`
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-app
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+```
+
+#### Vertical Pod Autoscaler
+
+Il resize delle risorse di un pod (vertical scaling) è ancora in alpha e il comportamento di default è cancellare il pod, aumentare le risorse e ricrearlo
+
+per abilitarlo `FEATURE_GATES=InPlacePodVerticalScaling=true`
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: nginx
+        resizePolicy:
+          - resourceName: cpu
+            restartPolicy: NotRequired
+          - resourceName: memory
+            restartPoliciy: RestartContainer
+        resources:
+          requests:
+            cpu: "1"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+```
+
+i pod windows non possono ancora essere resizati
+
+il VPA va installato perchè non è buildtin come l'HPA
+
+Il Recommender monitora il metric server e raccommanda i pod da scalare
+
+L'updater intercetta le raccomandazioni delle risorse e controlla i pod esistenti, fa l'evict di quelli da mutare
+
+L'admission controller applica le soglie raccomandate e restarta i pod aggiornati
+
+```yaml
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: my-app-vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-app
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: "my-app"
+      minAllowed:
+        cpu: "250m"
+      maxAllowed:
+        cpu: "2"
+      controlledResources: ["cpu"]
+```
+
+
 ## Cluster maintenance
 
 ### OS Upgrades
@@ -1340,7 +1442,7 @@ Per l'apiserver bisogna specificare nel certificato tutti i nomi dns e gli ip co
 
 per farlo si crea un cnf file
 
-``` hl_lines="9-14"
+```ini hl_lines="9-14"
 [req]
 req_extensions = v3_req
 distinguished_name = req_distinguished_name
@@ -1358,3 +1460,673 @@ IP.2 = 172.17.0.87
 ```
 
 I certificati dei kubelet devono avere come nome il nome del nodo
+
+#### Visualizzare i certificati
+
+se il cluster è stato deployato the hard way, i certificati sono stati generati a manutenzione
+
+invece kubeadm o altri provisioning tool se ne occupano in automatico e sono indicati nelle spec dei vari static pods
+
+per leggere il contenuto di un certificato `openssl x509 -in /etc/kubernetes/pki/apiserver.crt -text -noout`
+
+nei log si possono trovare info utili `journalclt -u etcd.service -l` es. per k8s installato come service, mentre `kubectl logs etcd-master` per kubeadm
+
+<https://github.com/mmumshad/kubernetes-the-hard-way/tree/master/tools>
+
+#### Certificates api
+
+kubernetes ha un sistema built-in per gestire i certificati e il loro rinnovo
+
+- un utente genera la propria key con `openssl genrsa -out jane.key 2048`
+- genera la signing request da firmare con `openssl req -new -key jane.key -subj "/CN=jane" -out jane.csr`
+- l'amministratore crea il CertificateSigningRequestObject
+  ```yaml title="jane-csr.yaml"
+  apiVersion: certificates.k8s.io/v1
+  kind: CertificateSigningRequest
+  metadata
+    name: jane
+  spec:
+    expirationSeconds: 600 #seconds
+    usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    request:
+      <jane.crt in base64>
+  ```
+- l'amministratore può vedere tutte le richieste con `kubectl get csr`
+- per approvare usa `kubectl certificate approve jane`
+- a quel punto il certificato firmato si può ottenere con `kubectl get csr jane -o yaml` ma è encodato in base64 
+- `echo "<testo encodato>" | base64 --decode`
+
+tutte le operazioni relative ai certificati vengono fatte dal controller manager
+
+### KubeConfig
+
+il kubeconfig è un file di parametri letto automaticamente durante l'invocazione di kubectl, di default viene cercato in `$HOME/.kube/config`
+
+è composto da 3 sezioni:
+
+- cluster, dove vengono speficicati i vari cluster
+- users, i vari utenti che hanno accesso ai cluster
+- contexts, definiscono che user usare su che cluster
+
+con la chiave `current-context` si setta l'accoppiata user-cluster da usare di default
+
+con il comando `kubectl config view` si possono vedere i settings correnti
+
+con `kubectl config use-context <nomecontext>` si può switchare di context, il nome del context dev'essere già presente nel kubeconfig
+
+nel context del kubeconfig si può anche specificare un namespace da usare
+
+### Api Groups
+
+con il comando `kubectl proxy` si può far partire un proxy http locale per poter fare chiamate curl autenticate senza dover specificare key, cert e cacert
+
+### RBAC
+
+prima si crea il role
+
+```yaml title="developer-role.yaml"
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+    name: developer
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list", "get", "create", "update", "delete"]
+- apiGroups: [""]
+  resources: ["ConfigMap"]
+  verbs: ["create"]
+```
+
+poi si linka il ruolo all'utente con il rolebinding
+
+```yaml title="devuser-developer-binding.yaml"
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+    name: devuser-developer-binding
+subjects:
+- kind: User
+  name: dev-user
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: developer
+  apiGroup: rbac.authorization.k8s.io
+```
+
+i role sono namespace-scoped, per specificare un namespace bisogna metterlo nei metadata
+
+per vedere i ruoli `kubectl get roles`
+
+per i rolebinding `kubectl get rolebindings`
+
+
+per vedere se ho i permessi per fare qualcosa, `kubectl auth can-i create deployments`
+
+posso impersonare un utente con `--as nomeutente`, posso vedere i permessi per un namespace con `--namespace` 
+
+`kubectl auth can-i create pods --as dev-user --namespace test`
+
+per restringere i permessi a risorse particolari
+
+```yaml title="developer-role.yaml"
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+    name: developer
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list", "get", "create", "update", "delete"]
+  resourceNames: ["blue", "orange"]
+```
+
+
+### Cluster roles
+
+i role e i rolebinding sono relativi ai namespace, se non viene specificato un namespace viene sottointeso quello di default
+
+i clusterrole si applicano a risorse trasversali, tipo nodi, pv, CertificateSigningRequest
+
+`kubectl api-resources --namespaced=true` e `kubectl api-resources --namespaced=false`
+
+esempi di utilizzo: cluster admin che può creare/eliminare nodi, oppure storage admin che può creare e cancellare persistentvolume
+
+
+```yaml title="cluster-role.yaml"
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+    name: cluster-administrator
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["list", "get", "create", "delete"]
+```
+
+```yaml title="cluster-admin-binding.yaml"
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+    name: cluster-admin-role-binding
+subjects:
+- kind: User
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: cluster-administrator
+  apiGroup: rbac.authorization.k8s.io
+```
+
+se si crea un clusterrole per una risorsa namespaced, le regole per quella risorsa saranno valide per tutti i namespace
+
+
+### Service accounts
+
+`kubectl create serviceaccount dashboard-sa` per creare l'account
+
+`kubectl create token dashboard-sa` per creare il token
+
+alla creazione viene staccato un token per permettere di autenticatsi
+
+`kubectl describe serviceaccount dashbopard-sa`
+
+il token è storato come secret
+
+`kubectl describe secret nometoken`
+
+se l'applicazione è hostata sul cluster, il secret può essere dirattamente montato come volume nel pod
+
+ogni volta che viene creato un namespace, viene creato un serviceaccount di default che viene montato come volume in tutti i pod
+
+```yaml title="pod-definition.yml"
+apiVersion: v1
+kind: Pod
+metadata: 
+    name: myapp-pod
+    labels:
+        app: myapp
+        type: front-end
+spec:
+    containers:
+        - name: nginx-container
+          image: nginx
+    serviceAccountName: dashboard-sa # per passare le credenziali
+    automountServiceAccountToken: false # di default è true
+```
+
+### Image Security
+
+per usare immagini da un registry privato bisogna creare un secret di tipo docker-registry
+
+```bash
+kubectl create secret docker-registry regcred \
+    --docker-server=private-registry.io \
+    --docker-username=registry-user \
+    --docker-password=registry-password \
+    --docker-email=registry-user@org.com
+```
+```yaml title="pod-definition.yml"
+apiVersion: v1
+kind: Pod
+metadata: 
+    name: myapp-pod
+spec:
+    containers:
+    - name: nginx
+      image: private-registry.io/apps/asdasd
+    imagePullSecrets:
+    - name: regcred
+```
+
+### Security contexts
+
+i security context possono essere configurati a livello di pod o di container: a livello di pod vengono applicati su tutti i container, ma se vengono definiti anche a livello di container, allora questi overridano quelli a livello di pod
+
+```yaml title="pod-definition.yml"
+apiVersion: v1
+kind: Pod
+metadata: 
+    name: myapp-pod
+spec:
+    securityContext: # a livello di pod
+        runAsUser: 1000
+    containers:
+    - name: ubuntu
+      image: ubuntu
+      command: ["sleep", "3600"]
+      securityContext: # a livello di container
+        runAsUser: 1000
+        capabilities: # disponibili solo a livello di container e NON di pod
+            add: ["MAC_ADMIN"] 
+```
+
+### Network policies
+
+ingress = traffico dal client al server
+egress = traffico dal server al client
+
+le network policy vengono applicate ai pod, e servono a limitare il traffico su determiante porte e determinati pod
+
+```yaml title="Allow ingress traffic from api-pod on port 3306"
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: 
+    name: db-policy
+spec:
+    podSelector:
+       matchLabels:
+          role: db
+    policyTypes:
+    - Ingress
+    ingress:
+    - from:
+      - podSelector:
+          matchLabels:
+             name: api-pod
+      ports:
+      - protocol: TCP
+        port: 3306   
+```
+
+```yaml title="Allow ingress traffic from pod within namespace"
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: 
+    name: db-policy
+spec:
+    podSelector:
+       matchLabels:
+          role: db
+    policyTypes:
+    - Ingress
+    ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+             name: prod
+      ports:
+      - protocol: TCP
+        port: 3306   
+```
+
+```yaml title="Allow ingress traffic from pod within namespace"
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: 
+    name: db-policy
+spec:
+    podSelector:
+       matchLabels:
+          role: db
+    policyTypes:
+    - Ingress
+    ingress:
+    - from:
+      - podSelector:
+          matchLabels:
+             name: api-pod
+        namespaceSelector:
+          matchLabels:
+             name: prod
+      - ipBlock:
+          cidr: 192.168.5.10/32
+      ports:
+      - protocol: TCP
+        port: 3306   
+```
+
+le rules possono essere combinate per agire in AND, altrimenti vengono validate singolarmente
+
+```yaml title="Allow ingress traffic from pod within namespace"
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: 
+    name: db-policy
+spec:
+    podSelector:
+       matchLabels:
+          role: db
+    policyTypes:
+    - Ingress
+    - Egress
+    ingress:
+    - from:
+      - podSelector:
+          matchLabels:
+             name: api-pod
+    egress:
+    - to:
+      - ipBlock:
+           cidr: 192.168.5.10/32
+      ports:
+      - protocol: TCP
+        port: 3306   
+```
+
+### CRD
+
+```yaml title="flight-crd.yaml"
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata: 
+  name: flighttickets.flights.com
+spec:
+  scope: Namespaced
+  group: flights.com
+  names:
+    kind: FlightTicket
+    singular: flightticket
+    plural: flighttickets
+    shortNames:
+    - ft
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              from:
+                type: string
+              to:
+                type: string
+              number:
+                type: integer
+                minimum: 1
+                maximum: 10
+```
+
+```yaml title="flight-ticket.yaml"
+apiVersion: flights.com/v1
+kind: FlightTicket
+metadata:
+  name: my-flight-ticket
+spec:
+  from: Mumbai
+  to: London
+  number: 2
+```
+
+## Storage
+
+### Container storage interface
+
+Il container runtime interface è un'astrazione comune per dare supporto a diversi runtime (docker, cri-o, rkt)
+
+allo stesso modo, la Container Networking interface astrae la gestione della rete (flannel, cilium)
+
+per lo storage c'è la Container Storage Interface
+
+### Volumes
+
+```yaml title="esempio volume"
+apiVersion: v1
+kind: Pod
+metadata:
+  name: random-number-generator
+spec:
+  containers:
+  - image: alpine
+    name: alpine
+    command: ["/bin/sh", "-c"]
+    args: ["shuf -i 0-100 -n 1 >> /opt/number.out;"]
+    volumeMounts:
+    - mountPath: /opt
+      name: data-volume
+
+  volumes:
+  - name: data-volume
+    hostPath:
+      path: /data
+      type: Directory  
+```
+
+### Persistent Volumes
+
+invece che definire il volume a livello di pod, si possono usare i PV configurati a livello di cluster
+
+i PV possono poi essere usati dai pod tramite i PersistentVolumeClaims
+
+```yaml title="pv-definition.yaml"
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-vol1
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 1Gi
+  hostPath:
+    path: /data
+```
+
+### PersistentVolumeClaims
+
+gli admin creano i PV, gli utenti usano i PVC per usare i volume
+
+ogni PersistentVolume può essere bindato a un solo PVC
+
+kubernetes individua il PV con sufficiente spazio richiesto nel claim e le altre proprietà richieste
+
+se ci sono più match per il claim, si possono usare le label per indicare un PVC
+
+se non ci sono match, iil PVC rimane in stato pending finchè non ci sono PV disponibili, a quel punto avviene il binding
+
+
+```yaml title="pvc-definition.yaml"
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: myclaim
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Mi
+  persistentVolumeReclaimPolicy: Retain # default
+```
+
+sulla cancellazione di un PVC, di default il volume rimane e non viene usato da altri claim (Retain), può essere cancellato insieme al PVC (Delete) oppure può essere svuotato per essere usato da altri claim (Recycle)
+
+
+### Storage class
+
+Static provisioning quando il volume è da creare a mano (es su uno storage esterno)
+
+Dynamic provisioning quando viene creato in automatico da uno DefaultStorageClass
+
+
+```yaml title="pvc-definition.yaml"
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: google-storage
+provisioner: kubernetes.io/gce-pd
+parameters: # specifici per provisioner
+  type: pd-standard
+  replication-type: none
+```
+
+usando la storageclassname dentro un pvc, non è necessario creare il volume perchè a questo penserà direttamente lo storage class
+
+## Networking
+
+porte standard:
+
+|kube-api|6443|
+|kubelet|10250|
+|kube-scheduler|10259|
+|kube-controller-manager|10257|
+|services|30000-32767|
+|etcd|2379|
+|etcd-client|2380|
+
+### Pod Networking
+
+As an impact, the old weave net installation link won’t work anymore: –
+
+kubectl apply -f “https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d ‘\n’)”
+
+Instead of that, use the latest link below to install the weave net: –
+
+kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml
+
+il CNI configurato si può vedere da `/etc/cni/net.d/`
+
+di default viene installato sotto /opt/cni/bin
+
+
+### Service networking
+
+i services sono accessibili a tutti i nodi del cluster (ClusterIp)
+
+un NodePort funziona come un ClusterIp, ma espone il servizio anche su tutti i nodi
+
+per vedere le iptable di un service `iptables -L -t nat | grep nomeservice`
+
+### Cluster DNS
+
+di default, kubernates crea un record dns interno per ogni servizio
+
+`nomeservizio.nomenamespace.svc.cluster.local`
+
+per i pod si può abilitare, e il nome sarà con l'ip del pod sostituendo i . con -
+
+`10-244-2-5.nomenamespace.pod.cluster.local`
+
+
+### Core DNS
+
+core dns viene deployato come pod nel cluster, nel file `/etc/coredns/Corefile` sono elencati i plugin configurati
+
+### Ingress
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+    name: ingress-wear
+spec:
+    backend:
+        serviceName: wear-service
+        servicePort: 80
+```
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+    name: ingress-wear
+spec:
+    rules:
+    - http:
+        paths:
+        - path: /wear
+          pathType: Prefix
+          backend:
+            service:
+              name: wear-service
+              port:
+                number: 80
+        - path: /watch
+          pathType: Prefix
+          backend:
+            service:
+              name: watch-service
+              port:
+                number: 80
+```
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+    name: ingress-wear
+spec:
+    rules:
+    - host: wear.my-online-store.com
+      http:
+        paths:
+         - backend:
+            service:
+              name: wear-service
+              port:
+                number: 80
+    - host: watch.my-online-store.com
+      http:
+        paths:
+        - backend:
+            service:
+              name: watch-service
+              port:
+                number: 80
+```
+
+`kubectl create ingress ingress-test --rule="wear.my-online-store.com/wear*=wear-service:80"**`
+
+<https://kubernetes.io/docs/concepts/services-networking/ingress>
+
+
+### Gateway api
+
+l'infrastructure provider configura il GatewayClass per definire che network provider usare (nginx, traefik)
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+    name: example-class
+spec:
+    controllerName: example.com/gateway-controller
+```
+
+il cluster operator configurano i Gateway che sono istanze del GatewayClass
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+    name: example-gateway
+spec:
+    gatewayClassName: example-class
+    listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+```
+
+i dev configurano le HTTPRoute
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+    name: example-httproute
+spec:
+    parentRefs:
+    - name: example-gateway
+    hostnames:
+    - "www.example.com"
+    rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /login
+        backendRefs:
+        - name: example-svc
+          port: 8080
+```
+
+questo approccio è nativo, non è vendor specific e supporta configurazioni più complesse
