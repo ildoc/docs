@@ -2130,3 +2130,73 @@ spec:
 ```
 
 questo approccio è nativo, non è vendor specific e supporta configurazioni più complesse
+
+## Designing a cluster
+
+### Tutti i nodi
+
+sudo swapoff -a
+sudo sed -ri '/\sswap\s/s/^#?/#/' /etc/fstab
+sudo sysctl -w net.ipv4.ip_forward=1
+
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates curl gpg
+
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+sudo apt-get update
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+
+sudo systemctl enable --now kubelet
+
+sudo apt update
+sudo apt install containerd -y
+
+sudo mkdir -p /etc/containerd
+
+containerd config default | sed 's/SystemdCgroup = false/SystemdCgroup = true/' | sudo tee /etc/containerd/config.toml
+
+sudo systemctl restart containerd
+
+### controlplane
+
+
+sudo kubeadm init --apiserver-advertise-address 192.168.0.60 --pod-network-cidr "10.244.0.0/16" --upload-certs
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+
+
+
+### worker nodes
+
+sudo kubeadm join 192.168.0.60:6443 --token zp82nf.2uhnrgm6v682fxi3 \
+        --discovery-token-ca-cert-hash sha256:8d8258a8030eab2c04941d407e774849572fd47b4bcec4a7512bed3eaeba6fed
+
+
+
+## Helm
+
+i chart sono collezioni di oggetti che helm usa per installare applicazioni
+
+quando un chart viene installato, viene creata una release, in ogni release possono esserci più revision che sono snapshot dell'applicazione
+
+per tenere traccia dello stato, vengono usati metadata salvati come secret nel cluster
+
+helm permette il templating con il values.yaml
+
+## Kustomize
+
+con Kustomize si vuole massimizzare la reusability dei manifest, si definisce un set di manifest "base" e poi degli overlays, che fanno l'override dei singoli valori
+
+
+
+
+## Troubleshooting
+
